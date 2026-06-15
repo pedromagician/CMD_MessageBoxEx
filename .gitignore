@@ -1,0 +1,7 @@
+.vs/
+Debug/
+Release/
+MessageBoxEx.vcxproj.user
+project.aps
+/git/revision.h
+/git/revision.h.new
