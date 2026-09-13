@@ -523,7 +523,7 @@ bool MessageBoxEx::MessageBox(int& _result)
 			if (msg.message == WM_KEYDOWN) {
 				if (msg.wParam == VK_ESCAPE) {
 					mResultFromButtons = 0;
-					SendMessage(mhWndMessageBoxEx, WM_DESTROY, 0, 0);
+					DestroyWindow(mhWndMessageBoxEx);
 					mRunning = false;
 					break;
 				} else if (msg.wParam == VK_RETURN) {
@@ -537,7 +537,7 @@ bool MessageBoxEx::MessageBox(int& _result)
 						else if (hWndFocused == mhWnd3)
 							mResultFromButtons = 3;
 					}
-					SendMessage(mhWndMessageBoxEx, WM_DESTROY, 0, 0);
+					DestroyWindow(mhWndMessageBoxEx);
 					mRunning = false;
 					break;
 				} else if (msg.wParam == VK_TAB) {
