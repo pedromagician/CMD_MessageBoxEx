@@ -81,6 +81,8 @@ private:
 	static LRESULT CALLBACK WndProc(HWND _hWnd, UINT _message, WPARAM _wParam, LPARAM _lParam);
 
 	static void SetTextAlignment(HWND _hwnd, int _textAlignment);
+	static int ComputeButtonX(int _index, int _count, bool _center, int _width, int _buttonWidth);
+	static POINT ComputeWindowPosition(RECT _dialogRect);
 
 	static long GetDiameterX(RECT _rect);
 	static long GetDiameterY(RECT _rect);

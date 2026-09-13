@@ -209,6 +209,12 @@ int _tmain(int argc, _TCHAR* argv[])
 	else if (monitor == _T("mouse"))		MessageBoxEx::Position().monitor = MessageBoxEx::_MOUSE;
 	else if (monitor == _T("mousepointer"))	MessageBoxEx::Position().monitor = MessageBoxEx::_MOUSE_POINTER;
 	else {
+		bool validNumber = !monitor.empty() && monitor.find_first_not_of(_T("0123456789")) == wstring::npos;
+		if (!validNumber) {
+			wcout << _T("Error - invalid monitor: ") << monitor << endl;
+			return 0;
+		}
+
 		MessageBoxEx::Position().monitor = MessageBoxEx::_ID;
 		MessageBoxEx::Position().id = (UINT)Conversion::ToInt(monitor);
 	}

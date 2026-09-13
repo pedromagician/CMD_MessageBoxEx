@@ -46,6 +46,116 @@ void MessageBoxEx::SetTextAlignment(HWND _hwnd, int _textAlignment)
 	}
 }
 
+// X position of button _index (1-based) out of _count buttons, right-aligned or centered.
+int MessageBoxEx::ComputeButtonX(int _index, int _count, bool _center, int _width, int _buttonWidth)
+{
+	if (_center) {
+		static const int centerOffset[4] = { 0, 0, 10, 5 }; // indexed by _count (1..3)
+		int totalWidth = _buttonWidth * _count + 20 * (_count - 1);
+		int centerStart = _width / 2 - totalWidth / 2 - centerOffset[_count];
+		return centerStart + (_index - 1) * (_buttonWidth + 20);
+	}
+	else {
+		return _width - 25 - _buttonWidth * (_count - _index + 1) - 10 - 20 * (_count - _index);
+	}
+}
+
+// Resolves the target monitor and Position().type into an absolute screen x/y (delta already applied).
+POINT MessageBoxEx::ComputeWindowPosition(RECT _dialogRect)
+{
+	bool monitor = true;
+	RECT monitorSize = { 0 };
+
+	switch (MessageBoxEx::Position().monitor) {
+	case _PRIMARY:
+		monitor = Monitors::GetMonitorInfoPrimary(monitorSize);
+		break;
+	case _MOUSE:
+		monitor = Monitors::GetMonitorInfoMouse(monitorSize);
+		break;
+	case _MOUSE_POINTER:
+		monitor = Monitors::GetMonitorInfoMouse(monitorSize);
+		MessageBoxEx::Position().type = _POINTER;
+		break;
+	case _ID:
+		monitor = Monitors::GetMonitorInfoId(MessageBoxEx::Position().id, monitorSize);
+		break;
+	}
+
+	if (MessageBoxEx::Position().type == _POINTER) {
+		RECT mouseMonitorSize = { 0 };
+		monitor = Monitors::GetMonitorInfoMouse(mouseMonitorSize);
+		if (EqualRect(&mouseMonitorSize, &monitorSize) == false) {
+			MessageBoxEx::Position().type = _CENTER;
+		}
+	}
+
+	long x = 0;
+	long y = 0;
+	if (monitor) {
+		switch (MessageBoxEx::Position().type) {
+		case _CENTER: {
+			x = GetDiameterX(monitorSize) - GetWidth(_dialogRect) / 2;
+			y = GetDiameterY(monitorSize) - GetHeight(_dialogRect) / 2;
+			break;
+		}
+		case _XY: {
+			x = monitorSize.left;
+			y = monitorSize.top;
+			break;
+		}
+		case _TOP_CENTER: {
+			x = GetDiameterX(monitorSize) - GetWidth(_dialogRect) / 2;
+			y = monitorSize.top;
+			break;
+		}
+		case _BOTTOM_CENTER: {
+			x = GetDiameterX(monitorSize) - GetWidth(_dialogRect) / 2;
+			y = monitorSize.bottom - GetHeight(_dialogRect);
+			break;
+		}
+		case _LEFT_CENTER: {
+			x = monitorSize.left;
+			y = GetDiameterY(monitorSize) - GetHeight(_dialogRect) / 2;
+			break;
+		}
+		case _RIGHT_CENTER: {
+			x = monitorSize.right - GetWidth(_dialogRect);
+			y = GetDiameterY(monitorSize) - GetHeight(_dialogRect) / 2;
+			break;
+		}
+		case _POINTER: {
+			POINT mouse;
+			::GetCursorPos(&mouse);
+
+			x = mouse.x - GetWidth(_dialogRect) / 2;
+			y = mouse.y - GetHeight(_dialogRect) / 2;
+
+			break;
+		}
+		default:
+			wcout << _T("Error - unknown position: ") + to_wstring(MessageBoxEx::Position().type) << endl;
+			MessageBoxEx::Position().type = _CENTER;
+			monitor = Monitors::GetMonitorInfoPrimary(monitorSize);
+			x = GetDiameterX(monitorSize) - GetWidth(_dialogRect) / 2;
+			y = GetDiameterY(monitorSize) - GetHeight(_dialogRect) / 2;
+			break;
+		}
+	}
+	else {
+		wcout << _T("Error - problem loading information from the monitor") << endl;
+		MessageBoxEx::Position().monitor = _PRIMARY;
+		MessageBoxEx::Position().type = _XY;
+		x = monitorSize.left;
+		y = monitorSize.top;
+	}
+
+	x += MessageBoxEx::Position().delta.x;
+	y += MessageBoxEx::Position().delta.y;
+
+	return POINT{ x, y };
+}
+
 LRESULT CALLBACK MessageBoxEx::WndProc(HWND _hWnd, UINT _message, WPARAM _wParam, LPARAM _lParam)
 {
 	LOGFONT lfont;
@@ -102,60 +212,30 @@ LRESULT CALLBACK MessageBoxEx::WndProc(HWND _hWnd, UINT _message, WPARAM _wParam
 
 			// buttons
 			if (MessageBoxEx::Buttons() > 0) {
-				int buttonX = 0;
 				int buttonWidth = FontSize() * 120 / 22 + MessageBoxEx::ButtonsWidth();
 				int buttonHeight = FontSize() + 8;
 				int buttonY = 10 + FontSize() / 2 + FontSize() * LinesOfText() + 10;
+				int count = MessageBoxEx::Buttons();
+				bool center = MessageBoxEx::Center();
+				int width = MessageBoxEx::Width();
 
 				// button 1
-				if (MessageBoxEx::Center()) {
-					if (MessageBoxEx::Buttons() == 1)
-						buttonX = MessageBoxEx::Width() / 2 - buttonWidth / 2;
-					else if (MessageBoxEx::Buttons() == 2)
-						buttonX = MessageBoxEx::Width() / 2 - (buttonWidth * 2 + 20) / 2 - 10;
-					else
-						buttonX = MessageBoxEx::Width() / 2 - (buttonWidth * 3 + 40) / 2 - 5;
-				}
-				else {
-					if (MessageBoxEx::Buttons() == 1)
-						buttonX = MessageBoxEx::Width() - 25 - buttonWidth * 1 - 10;
-					else if (MessageBoxEx::Buttons() == 2)
-						buttonX = MessageBoxEx::Width() - 25 - buttonWidth * 2 - 10 - 20;
-					else
-						buttonX = MessageBoxEx::Width() - 25 - buttonWidth * 3 - 10 - 20 * 2;
-				}
-
+				int buttonX = ComputeButtonX(1, count, center, width, buttonWidth);
 				mhWnd1 = CreateWindowEx(WS_EX_STATICEDGE, _T("Button"), MessageBoxEx::Button1().c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP, buttonX, buttonY, buttonWidth, buttonHeight, _hWnd, nullptr, hInst, nullptr);
 				if (mhWnd1 == nullptr) return (LRESULT)nullptr;
 				SendMessage((mhWnd1), WM_SETFONT, (WPARAM)mhFont, 0);
 
 				// button 2
-				if (MessageBoxEx::Buttons() >= 2) {
-					if (MessageBoxEx::Center()) {
-						if (MessageBoxEx::Buttons() == 2)
-							buttonX = MessageBoxEx::Width() / 2 - (buttonWidth * 2 + 20) / 2 + buttonWidth + 20 - 10;
-						else
-							buttonX = MessageBoxEx::Width() / 2 - (buttonWidth * 3 + 40) / 2 + (buttonWidth + 20) * 1 - 5;
-					}
-					else {
-						if (MessageBoxEx::Buttons() == 2)
-							buttonX = MessageBoxEx::Width() - 25 - buttonWidth * 1 - 10;
-						else
-							buttonX = MessageBoxEx::Width() - 25 - buttonWidth * 2 - 10 - 20;
-					}
-
+				if (count >= 2) {
+					buttonX = ComputeButtonX(2, count, center, width, buttonWidth);
 					mhWnd2 = CreateWindowEx(WS_EX_STATICEDGE, _T("Button"), MessageBoxEx::Button2().c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP, buttonX, buttonY, buttonWidth, buttonHeight, _hWnd, nullptr, hInst, nullptr);
 					if (mhWnd2 == nullptr) return (LRESULT)nullptr;
 					SendMessage((mhWnd2), WM_SETFONT, (WPARAM)mhFont, 0);
 				}
 
 				// button 3
-				if (MessageBoxEx::Buttons() == 3) {
-					if (MessageBoxEx::Center())
-						buttonX = MessageBoxEx::Width() / 2 - (buttonWidth * 3 + 40) / 2 + (buttonWidth + 20) * 2 - 5;
-					else
-						buttonX = MessageBoxEx::Width() - 25 - buttonWidth * 1 - 10;
-
+				if (count == 3) {
+					buttonX = ComputeButtonX(3, count, center, width, buttonWidth);
 					mhWnd3 = CreateWindowEx(WS_EX_STATICEDGE, _T("Button"), MessageBoxEx::Button3().c_str(), WS_VISIBLE | WS_CHILD | WS_TABSTOP, buttonX, buttonY, buttonWidth, buttonHeight, _hWnd, nullptr, hInst, nullptr);
 					if (mhWnd3 == nullptr) return (LRESULT)nullptr;
 					SendMessage((mhWnd3), WM_SETFONT, (WPARAM)mhFont, 0);
@@ -232,101 +312,13 @@ LRESULT CALLBACK MessageBoxEx::WndProc(HWND _hWnd, UINT _message, WPARAM _wParam
 			RECT dialogRect;
 			GetWindowRect(_hWnd, &dialogRect);
 
-			bool monitor = true;
-			RECT monitorSize = { 0 };
-
-			switch (MessageBoxEx::Position().monitor) {
-			case _PRIMARY:
-				monitor = Monitors::GetMonitorInfoPrimary(monitorSize);
-				break;
-			case _MOUSE:
-				monitor = Monitors::GetMonitorInfoMouse(monitorSize);
-				break;
-			case _MOUSE_POINTER:
-				monitor = Monitors::GetMonitorInfoMouse(monitorSize);
-				MessageBoxEx::Position().type = _POINTER;
-				break;
-			case _ID:
-				monitor = Monitors::GetMonitorInfoId(MessageBoxEx::Position().id, monitorSize);
-				break;
-			}
-
-			if (MessageBoxEx::Position().type == _POINTER) {
-				RECT mouseMonitorSize = { 0 };
-				monitor = Monitors::GetMonitorInfoMouse(mouseMonitorSize);
-				if (EqualRect(&mouseMonitorSize, &monitorSize) == false) {
-					MessageBoxEx::Position().type = _CENTER;
-				}
-			}
-
-			long x = 0;
-			long y = 0;
-			if (monitor) {
-				switch (MessageBoxEx::Position().type) {
-				case _CENTER: {
-					x = GetDiameterX(monitorSize) - GetWidth(dialogRect) / 2;
-					y = GetDiameterY(monitorSize) - GetHeight(dialogRect) / 2;
-					break;
-				}
-				case _XY: {
-					x = monitorSize.left;
-					y = monitorSize.top;
-					break;
-				}
-				case _TOP_CENTER: {
-					x = GetDiameterX(monitorSize) - GetWidth(dialogRect) / 2;
-					y = monitorSize.top;
-					break;
-				}
-				case _BOTTOM_CENTER: {
-					x = GetDiameterX(monitorSize) - GetWidth(dialogRect) / 2;
-					y = monitorSize.bottom - GetHeight(dialogRect);
-					break;
-				}
-				case _LEFT_CENTER: {
-					x = monitorSize.left;
-					y = GetDiameterY(monitorSize) - GetHeight(dialogRect) / 2;
-					break;
-				}
-				case _RIGHT_CENTER: {
-					x = monitorSize.right - GetWidth(dialogRect);
-					y = GetDiameterY(monitorSize) - GetHeight(dialogRect) / 2;
-					break;
-				}
-				case _POINTER: {
-					POINT mouse;
-					::GetCursorPos(&mouse);
-
-					x = mouse.x - GetWidth(dialogRect) / 2;
-					y = mouse.y - GetHeight(dialogRect) / 2;
-
-					break;
-				}
-				default:
-					wcout << _T("Error - unknown position: ") + to_wstring(MessageBoxEx::Position().type) << endl;
-					MessageBoxEx::Position().type = _CENTER;
-					monitor = Monitors::GetMonitorInfoPrimary(monitorSize);
-					x = GetDiameterX(monitorSize) - GetWidth(dialogRect) / 2;
-					y = GetDiameterY(monitorSize) - GetHeight(dialogRect) / 2;
-					break;
-				}
-			}
-			else {
-				wcout << _T("Error - problem loading information from the monitor") << endl;
-				MessageBoxEx::Position().monitor = _PRIMARY;
-				MessageBoxEx::Position().type = _XY;
-				x = monitorSize.left;
-				y = monitorSize.top;
-			}
-
-			x += MessageBoxEx::Position().delta.x;
-			y += MessageBoxEx::Position().delta.y;
+			POINT pos = ComputeWindowPosition(dialogRect);
 
 			UINT flags = SWP_NOSIZE | SWP_SHOWWINDOW;
 			if (MessageBoxEx::TopMost() == false)
 				flags |= SWP_NOZORDER;
 
-			if (!SetWindowPos(_hWnd, HWND_TOPMOST, x, y, 0, 0, flags)) {
+			if (!SetWindowPos(_hWnd, HWND_TOPMOST, pos.x, pos.y, 0, 0, flags)) {
 				wcout << L"Error - SetWindowPos failed" << endl;
 			}
 			break;
@@ -472,10 +464,10 @@ bool MessageBoxEx::MessageBox(int& _result)
 	SetWindowText(mhWndPrompt, Prompt().c_str());
 	SetForegroundWindow(mhWndMessageBoxEx);
 
-	SendMessage((HWND)mhWnd1, BM_SETSTYLE, (WPARAM)LOWORD(BS_PUSHBUTTON), MAKELPARAM(TRUE, 0));
-	SendMessage((HWND)mhWnd2, BM_SETSTYLE, (WPARAM)LOWORD(BS_PUSHBUTTON), MAKELPARAM(TRUE, 0));
-	SendMessage((HWND)mhWnd3, BM_SETSTYLE, (WPARAM)LOWORD(BS_PUSHBUTTON), MAKELPARAM(TRUE, 0));
-	
+	if (MessageBoxEx::Buttons() >= 1) SendMessage(mhWnd1, BM_SETSTYLE, (WPARAM)LOWORD(BS_PUSHBUTTON), MAKELPARAM(TRUE, 0));
+	if (MessageBoxEx::Buttons() >= 2) SendMessage(mhWnd2, BM_SETSTYLE, (WPARAM)LOWORD(BS_PUSHBUTTON), MAKELPARAM(TRUE, 0));
+	if (MessageBoxEx::Buttons() >= 3) SendMessage(mhWnd3, BM_SETSTYLE, (WPARAM)LOWORD(BS_PUSHBUTTON), MAKELPARAM(TRUE, 0));
+
 	// default button
 	if (MessageBoxEx::Buttons() > 0) {
 		if (MessageBoxEx::DefaultButton() < 0 || MessageBoxEx::DefaultButton() > MessageBoxEx::Buttons())
@@ -484,6 +476,9 @@ bool MessageBoxEx::MessageBox(int& _result)
 		if (MessageBoxEx::DefaultButton() == 1)		SetFocus(mhWnd1);
 		else if (MessageBoxEx::DefaultButton() == 2)	SetFocus(mhWnd2);
 		else if (MessageBoxEx::DefaultButton() == 3)	SetFocus(mhWnd3);
+	}
+	else {
+		MessageBoxEx::DefaultButton() = 0;
 	}
 
 	if (MessageBoxEx::BlockParent())

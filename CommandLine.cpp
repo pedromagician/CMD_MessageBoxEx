@@ -233,8 +233,6 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 					return false;
 				}
 			}
-			found->seen = true;
-			_correctCount++;
 			break;
 		}
 		case ParamType::INT: {
@@ -242,11 +240,12 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 				*found->outInt = _wtoi(value.c_str());
 			}
 			else {
-				if (i + 1 >= _argc) return false;
+				if (i + 1 >= _argc) {
+					wprintf(L"Missing value for parameter -%s\n", found->names[0].c_str());
+					return false;
+				}
 				*found->outInt = _wtoi(_argv[++i]);
 			}
-			found->seen = true;
-			_correctCount++;
 			break;
 		}
 		case ParamType::STRING: {
@@ -254,12 +253,13 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 				*found->outString = value;
 			}
 			else {
-				if (i + 1 >= _argc) return false;
+				if (i + 1 >= _argc) {
+					wprintf(L"Missing value for parameter -%s\n", found->names[0].c_str());
+					return false;
+				}
 				*found->outString = _argv[++i];
 			}
 			*found->outString = Conversion::ParseEscapeString(*found->outString);
-			found->seen = true;
-			_correctCount++;
 			break;
 		}
 		case ParamType::ENUM: {
@@ -279,7 +279,10 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 				}
 			}
 			else {
-				if (i + 1 >= _argc) return false;
+				if (i + 1 >= _argc) {
+					wprintf(L"Missing value for parameter -%s\n", found->names[0].c_str());
+					return false;
+				}
 				wstring val = _argv[++i];
 
 				wstring valLower = Conversion::ToLower(val);
@@ -296,8 +299,6 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 					return false;
 				}
 			}
-			found->seen = true;
-			_correctCount++;
 			break;
 		}
 		case ParamType::CHAR: {
@@ -310,7 +311,10 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 				*found->outChar = value[0];
 			}
 			else {
-				if (i + 1 >= _argc) return false;
+				if (i + 1 >= _argc) {
+					wprintf(L"Missing value for parameter -%s\n", found->names[0].c_str());
+					return false;
+				}
 				wstring val = Conversion::TrimWhiteChar(_argv[++i]);
 				if (val.empty()) {
 					wprintf(L"Invalid char value for -%s\n", found->names[0].c_str());
@@ -318,8 +322,6 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 				}
 				*found->outChar = val[0];
 			}
-			found->seen = true;
-			_correctCount++;
 			break;
 		}
 
@@ -352,38 +354,32 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 				return false;
 			}
 
-			try {
-				wstring hexPart = valStr.substr(0, 6);
+			wstring hexPart = valStr.substr(0, 6);
 
-				for (wchar_t c : hexPart) {
-					if (!iswxdigit(c)) {
-						wprintf(L"Invalid character in color value for -%s: %lc\n", found->names[0].c_str(), c);
-						return false;
-					}
-				}
-
-				unsigned long r = wcstol(hexPart.substr(0, 2).c_str(), nullptr, 16);
-				unsigned long g = wcstol(hexPart.substr(2, 2).c_str(), nullptr, 16);
-				unsigned long b = wcstol(hexPart.substr(4, 2).c_str(), nullptr, 16);
-
-				if (r > 255 || g > 255 || b > 255) {
-					wprintf(L"Color values must be between 0 and 255\n");
+			for (wchar_t c : hexPart) {
+				if (!iswxdigit(c)) {
+					wprintf(L"Invalid character in color value for -%s: %lc\n", found->names[0].c_str(), c);
 					return false;
 				}
-
-				*found->outColor = ColorRGB((unsigned char)r, (unsigned char)g, (unsigned char)b);
 			}
-			catch (...) {
-				wprintf(L"Error parsing color value for -%s\n", found->names[0].c_str());
+
+			unsigned long r = wcstol(hexPart.substr(0, 2).c_str(), nullptr, 16);
+			unsigned long g = wcstol(hexPart.substr(2, 2).c_str(), nullptr, 16);
+			unsigned long b = wcstol(hexPart.substr(4, 2).c_str(), nullptr, 16);
+
+			if (r > 255 || g > 255 || b > 255) {
+				wprintf(L"Color values must be between 0 and 255\n");
 				return false;
 			}
 
-			found->seen = true;
-			_correctCount++;
+			*found->outColor = ColorRGB((unsigned char)r, (unsigned char)g, (unsigned char)b);
 			break;
 		}
 
 		}
+
+		found->seen = true;
+		_correctCount++;
 	}
 
 	// check required
