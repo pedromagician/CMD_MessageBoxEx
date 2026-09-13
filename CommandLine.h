@@ -69,6 +69,7 @@ private:
 	bool mHelp;
 
 	void AddParamBase(ParamDef& _p);
+	bool LooksLikeKnownFlag(const wstring& _token) const;
 
 public:
 	CommandLine();

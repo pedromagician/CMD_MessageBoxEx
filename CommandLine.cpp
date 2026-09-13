@@ -169,6 +169,22 @@ void CommandLine::AddColor(const vector<wstring>& _names, const wstring& _desc, 
 	AddParamBase(p);
 }
 
+bool CommandLine::LooksLikeKnownFlag(const wstring& _token) const
+{
+	if (_token.empty())
+		return false;
+
+	wstring name = _token;
+	if (name.rfind(L"--", 0) == 0) name = name.substr(2);
+	else if (name[0] == L'-' || name[0] == L'/') name = name.substr(1);
+	else return false;
+
+	size_t eq = name.find(L'=');
+	if (eq != wstring::npos) name = name.substr(0, eq);
+
+	return mAliasMap.count(Conversion::ToLower(name)) != 0;
+}
+
 bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCount)
 {
 	_correctCount = 0;
@@ -227,7 +243,7 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 			else {
 				if (value == L"1" || Conversion::ToLower(value) == L"true" || Conversion::ToLower(value) == L"on")
 					*found->outBool = true;
-				else if (value == L"0" || Conversion::ToLower(value) == L"false")
+				else if (value == L"0" || Conversion::ToLower(value) == L"false" || Conversion::ToLower(value) == L"off")
 					*found->outBool = false;
 				else {
 					wprintf(L"Invalid boolean value: %s\n", value.c_str());
@@ -241,7 +257,7 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 				*found->outInt = _wtoi(value.c_str());
 			}
 			else {
-				if (i + 1 >= _argc) {
+				if (i + 1 >= _argc || LooksLikeKnownFlag(_argv[i + 1])) {
 					wprintf(L"Missing value for parameter -%s\n", found->names[0].c_str());
 					return false;
 				}
@@ -254,7 +270,7 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 				*found->outString = value;
 			}
 			else {
-				if (i + 1 >= _argc) {
+				if (i + 1 >= _argc || LooksLikeKnownFlag(_argv[i + 1])) {
 					wprintf(L"Missing value for parameter -%s\n", found->names[0].c_str());
 					return false;
 				}
@@ -265,41 +281,30 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 			break;
 		}
 		case ParamType::ENUM: {
+			wstring val;
 			if (!value.empty()) {
-				wstring valLower = Conversion::ToLower(value);
-				bool matched = false;
-				for (auto& kv : found->enumMap) {
-					if (Conversion::ToLower(kv.first) == valLower) {
-						*found->outEnum = kv.second;
-						matched = true;
-						break;
-					}
-				}
-				if (!matched) {
-					wprintf(L"Invalid enum value: %s\n", value.c_str());
-					return false;
-				}
+				val = value;
 			}
 			else {
-				if (i + 1 >= _argc) {
+				if (i + 1 >= _argc || LooksLikeKnownFlag(_argv[i + 1])) {
 					wprintf(L"Missing value for parameter -%s\n", found->names[0].c_str());
 					return false;
 				}
-				wstring val = _argv[++i];
+				val = _argv[++i];
+			}
 
-				wstring valLower = Conversion::ToLower(val);
-				bool matched = false;
-				for (auto& kv : found->enumMap) {
-					if (Conversion::ToLower(kv.first) == valLower) {
-						*found->outEnum = kv.second;
-						matched = true;
-						break;
-					}
+			wstring valLower = Conversion::ToLower(val);
+			bool matched = false;
+			for (auto& kv : found->enumMap) {
+				if (Conversion::ToLower(kv.first) == valLower) {
+					*found->outEnum = kv.second;
+					matched = true;
+					break;
 				}
-				if (!matched) {
-					wprintf(L"Invalid enum value: %s\n", val.c_str());
-					return false;
-				}
+			}
+			if (!matched) {
+				wprintf(L"Invalid enum value: %s\n", val.c_str());
+				return false;
 			}
 			break;
 		}
@@ -313,7 +318,7 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 				*found->outChar = value[0];
 			}
 			else {
-				if (i + 1 >= _argc) {
+				if (i + 1 >= _argc || LooksLikeKnownFlag(_argv[i + 1])) {
 					wprintf(L"Missing value for parameter -%s\n", found->names[0].c_str());
 					return false;
 				}
@@ -333,7 +338,7 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 				valStr = value;
 			}
 			else {
-				if (i + 1 >= _argc) {
+				if (i + 1 >= _argc || LooksLikeKnownFlag(_argv[i + 1])) {
 					wprintf(L"Missing value for color parameter -%s\n", found->names[0].c_str());
 					return false;
 				}

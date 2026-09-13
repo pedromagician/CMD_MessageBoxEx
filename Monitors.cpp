@@ -17,7 +17,7 @@ BOOL CALLBACK Monitors::MonitorEnum(HMONITOR _hMon, [[maybe_unused]] HDC _hdc, L
 	return TRUE;
 }
 
-bool Monitors::GetMonitorInfoId(UINT id, RECT& monitor)
+bool Monitors::GetMonitorInfoId(UINT _id, RECT& _monitor)
 {
     Monitors monitors;
 
@@ -26,12 +26,12 @@ bool Monitors::GetMonitorInfoId(UINT id, RECT& monitor)
         return false;
     }
 
-    if (id >= monitors.rcMonitors.size()) {
-        wcout << _T("Error - problem with monitor ") << to_wstring(id) << endl;
-        id = 0;
+    if (_id >= monitors.rcMonitors.size()) {
+        wcout << _T("Error - problem with monitor ") << to_wstring(_id) << endl;
+        _id = 0;
     }
 
-    monitor = monitors.rcMonitors[id];
+    _monitor = monitors.rcMonitors[_id];
     return true;
 }
 
@@ -51,7 +51,7 @@ bool Monitors::GetMonitorInfoPrimary(RECT& _monitor)
 	return true;
 }
 
-bool Monitors::GetMonitorInfoMouse(RECT& monitor)
+bool Monitors::GetMonitorInfoMouse(RECT& _monitor)
 {
     POINT mouse;
     if (!GetCursorPos(&mouse))
@@ -66,6 +66,6 @@ bool Monitors::GetMonitorInfoMouse(RECT& monitor)
     if (!GetMonitorInfo(hMon, &info))
         return false;
 
-    monitor = info.rcMonitor;
+    _monitor = info.rcMonitor;
     return true;
 }

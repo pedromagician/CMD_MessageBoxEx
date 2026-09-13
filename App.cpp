@@ -189,7 +189,11 @@ int _tmain(int argc, _TCHAR* argv[])
 			MessageBoxEx::DeleteFileRequiredForCompletion());
 	}
 
-	if (!cmd.ParseCommandLine(argc, argv, correctParameters) || correctParameters == 0 || help) {
+	if (!cmd.ParseCommandLine(argc, argv, correctParameters)) {
+		wprintf(L"Run with -help for usage information.\n");
+		return 0;
+	}
+	if (correctParameters == 0 || help) {
 		cmd.Help();
 		return 0;
 	}

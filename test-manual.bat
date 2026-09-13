@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 chcp 65001 >nul
 title MessageBoxEx - manualny test
 
@@ -114,15 +114,15 @@ set "DESC=V konzole sa vypise Error - message is empty. Ziadne okno sa neotvori,
 call :runtest -t BezSpravy -m ""
 
 set "ID=A4-unknown-param"
-set "DESC=V konzole sa vypise Unknown parameter, nasledovana celou napovedou. Ziadne okno sa neotvori."
+set "DESC=V konzole sa vypise Unknown parameter a strucna sprava Run with -help for usage information - NIE cela napoveda. Ziadne okno sa neotvori."
 call :runtest -neexistujuciParameter hodnota
 
 set "ID=A5-invalid-enum"
-set "DESC=V konzole sa vypise Invalid enum value spolu s napovedou - button prijima len 0 az 3. Ziadne okno sa neotvori."
+set "DESC=V konzole sa vypise Invalid enum value a strucna sprava Run with -help for usage information - NIE cela napoveda. Ziadne okno sa neotvori."
 call :runtest -m "test" -button 9
 
 set "ID=A6-invalid-color"
-set "DESC=V konzole sa vypise chyba o neplatnom znaku vo farbe, spolu s napovedou. Ziadne okno sa neotvori."
+set "DESC=V konzole sa vypise chyba o neplatnom znaku vo farbe a strucna sprava Run with -help for usage information - NIE cela napoveda. Ziadne okno sa neotvori."
 call :runtest -m "test" -p ZZZZZZ -button 1
 
 rem =============================================================
@@ -324,36 +324,43 @@ rem Pomocna rutina: spusti jeden test podla premennych ID a DESC,
 rem argumenty pre MessageBoxEx.exe su prevzate z parametrov call-u.
 rem =============================================================
 :runtest
-set "ARGS=%*"
+set ARGS=%*
 set /a TOTAL+=1
 cls
 echo ============================================================
-echo TEST %ID%   (%TOTAL%. v poradi)
+echo TEST !ID!   (%TOTAL%. v poradi)
 echo ------------------------------------------------------------
 echo Ocakavane:
-echo   %DESC%
+echo   !DESC!
 echo.
-echo Prikaz: "%EXE%" %ARGS%
+echo Prikaz: "%EXE%" !ARGS!
 echo ============================================================
 echo Stlac ENTER pre spustenie testu...
 pause >nul
 
-"%EXE%" %ARGS%
+"%EXE%" !ARGS!
 set "RC=%ERRORLEVEL%"
 
 echo.
 echo Dialog sa zatvoril. Navratovy kod (errorlevel): %RC%
 choice /c YNS /n /m "Zodpoveda vysledok popisu vyssie? [Y]ano [N]ie [S]kip: "
-if errorlevel 3 (
-    echo [SKIP] %ID% - %DESC% ^| errorlevel=%RC% >> "%LOG%"
-    set /a SKIP+=1
-) else if errorlevel 2 (
-    echo [FAIL] %ID% - %DESC% ^| errorlevel=%RC% >> "%LOG%"
-    set /a FAIL+=1
-) else (
-    echo [ OK ] %ID% - %DESC% ^| errorlevel=%RC% >> "%LOG%"
-    set /a PASS+=1
-)
+if errorlevel 3 goto :runtest_skip
+if errorlevel 2 goto :runtest_fail
+
+echo [ OK ] !ID! - !DESC! ^| errorlevel=!RC! >> "%LOG%"
+set /a PASS+=1
+goto :runtest_done
+
+:runtest_fail
+echo [FAIL] !ID! - !DESC! ^| errorlevel=!RC! >> "%LOG%"
+set /a FAIL+=1
+goto :runtest_done
+
+:runtest_skip
+echo [SKIP] !ID! - !DESC! ^| errorlevel=!RC! >> "%LOG%"
+set /a SKIP+=1
+
+:runtest_done
 exit /b 0
 
 :summary
