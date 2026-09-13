@@ -9,7 +9,7 @@ CommandLine::CommandLine() : mHelp(false)
 
 CommandLine::ParamDef::ParamDef()
 	: type(ParamType::BOOL),
-	required(RequiredParam::Optional), hasDefault(false),
+	required(RequiredParam::Optional), hasDefault(false), parseEscapes(false),
 	outBool(nullptr), outInt(nullptr), outString(nullptr), outEnum(nullptr), outChar(nullptr), outColor(nullptr),
 	defaultBool(false),
 	defaultInt(0),
@@ -91,12 +91,12 @@ void CommandLine::AddInt(const vector<wstring>& _names, const wstring& _desc, in
 	AddParamBase(p);
 }
 
-void CommandLine::AddString(const vector<wstring>& _names, const wstring& _desc, wstring& _outVar)
+void CommandLine::AddString(const vector<wstring>& _names, const wstring& _desc, wstring& _outVar, bool _parseEscapes)
 {
-	AddString(_names, _desc, _outVar, RequiredParam::Optional, _outVar);
+	AddString(_names, _desc, _outVar, RequiredParam::Optional, _outVar, _parseEscapes);
 }
 
-void CommandLine::AddString(const vector<wstring>& _names, const wstring& _desc, wstring& _outVar, RequiredParam _required, const wstring& _defaultValue)
+void CommandLine::AddString(const vector<wstring>& _names, const wstring& _desc, wstring& _outVar, RequiredParam _required, const wstring& _defaultValue, bool _parseEscapes)
 {
 	ParamDef p;
 	p.names = _names;
@@ -106,6 +106,7 @@ void CommandLine::AddString(const vector<wstring>& _names, const wstring& _desc,
 	p.required = _required;
 	p.hasDefault = (_required == RequiredParam::Optional);
 	p.defaultString = _defaultValue;
+	p.parseEscapes = _parseEscapes;
 
 	AddParamBase(p);
 }
@@ -259,7 +260,8 @@ bool CommandLine::ParseCommandLine(int _argc, wchar_t** _argv, int& _correctCoun
 				}
 				*found->outString = _argv[++i];
 			}
-			*found->outString = Conversion::ParseEscapeString(*found->outString);
+			if (found->parseEscapes)
+				*found->outString = Conversion::ParseEscapeString(*found->outString);
 			break;
 		}
 		case ParamType::ENUM: {

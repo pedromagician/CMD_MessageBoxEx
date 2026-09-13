@@ -82,14 +82,6 @@ POINT MessageBoxEx::ComputeWindowPosition(RECT _dialogRect)
 		break;
 	}
 
-	if (MessageBoxEx::Position().type == _POINTER) {
-		RECT mouseMonitorSize = { 0 };
-		monitor = Monitors::GetMonitorInfoMouse(mouseMonitorSize);
-		if (EqualRect(&mouseMonitorSize, &monitorSize) == false) {
-			MessageBoxEx::Position().type = _CENTER;
-		}
-	}
-
 	long x = 0;
 	long y = 0;
 	if (monitor) {
@@ -189,11 +181,22 @@ LRESULT CALLBACK MessageBoxEx::WndProc(HWND _hWnd, UINT _message, WPARAM _wParam
 				b = Background().second.b;
 				SetBkColor(hdcStatic, RGB(r, g, b));
 			}
+			else if (Brush().first) {
+				// Ziadny --background - pozadie za textom nech sedi s --brush (cele okno).
+				SetBkColor(hdcStatic, RGB(Brush().second.r, Brush().second.g, Brush().second.b));
+			}
+			else {
+				// Ziadny --background ani --brush - pozadie za textom nech sedi s dialogom/tlacidlom.
+				SetBkColor(hdcStatic, GetSysColor(COLOR_BTNFACE));
+			}
 
 			if (mhbrBkgnd)
 				return (INT_PTR)mhbrBkgnd;
 
-			return DefWindowProc(_hWnd, _message, _wParam, _lParam);
+			// Ziadny --brush - drzime sa rovnakeho pozadia ako ma samotne okno (COLOR_BTNFACE,
+			// pozri wcex.hbrBackground - rovnaka siva ako tlacidla). DefWindowProc by tu
+			// prepisal SetTextColor/SetBkColor nastavene vyssie spat na systemove predvolene farby.
+			return (INT_PTR)GetSysColorBrush(COLOR_BTNFACE);
 		}
 		case WM_CREATE: {
 			memset(&lfont, 0, sizeof(lfont));
@@ -408,7 +411,13 @@ bool MessageBoxEx::MessageBox(int& _result)
 		wcex.hInstance = hInst;
 		wcex.hIcon = nullptr;
 		wcex.hCursor = nullptr;
-		wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW);
+		// --brush maluje pozadie celeho okna (nielen textovej oblasti) - vytvorime ho uz tu,
+		// aby ho WNDCLASSEX pouzil ako hbrBackground; WM_CTLCOLORSTATIC nizsie ten isty handle
+		// znovupouzije (a WM_DESTROY ho korektne uvolni). Bez --brush sa drzime standardnej
+		// sivej dialogu (COLOR_BTNFACE), rovnakej ako maju tlacidla.
+		if (Brush().first && mhbrBkgnd == nullptr)
+			mhbrBkgnd = CreateSolidBrush(RGB(Brush().second.r, Brush().second.g, Brush().second.b));
+		wcex.hbrBackground = mhbrBkgnd ? mhbrBkgnd : (HBRUSH)(COLOR_BTNFACE + 1);
 		wcex.lpszMenuName = nullptr;
 		wcex.lpszClassName = _T("MessageBoxEx");
 		wcex.hIconSm = nullptr;

@@ -5,3 +5,8 @@ MessageBoxEx.vcxproj.user
 project.aps
 /git/revision.h
 /git/revision.h.new
+
+# generovane manualnym testovacim skriptom (test-manual.bat)
+/test-results.txt
+/trigger.txt
+/test/

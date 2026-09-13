@@ -62,7 +62,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 		cmd.AddString({ _T("message"),	_T("m") },
 			_T("Specifies the message text displayed in the dialog. Use \\n for line breaks; Unicode supported via \\u{XXXX}."),
-			MessageBoxEx::Prompt());
+			MessageBoxEx::Prompt(), true);
 
 		cmd.AddBool({ _T("help"),			_T("h"),	_T("?") },
 			_T("Displays this help information."),
