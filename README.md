@@ -97,6 +97,7 @@ MessageBoxEx.exe -t "Warning" -m "Be careful!" -p FF0000 -b 000000 -i warning.bm
 |--------|-------------|
 | `-block` | Blocks the parent process until the dialog is closed. Useful in scripts that must wait for user interaction. |
 | `-windowsReturnCode, -wrc` | Enables returning the Windows-style exit code based on the button pressed. |
+| `-quiet` | Suppresses the result output normally printed to the console after the dialog closes. |
 | `-minimumDisplayTime, -mdt` | Ensures the dialog remains visible for at least xxx milliseconds before it can be closed. |
 | `-timeToCompletion, -ttc` | Automatically closes the dialog after xxx milliseconds, even without user interaction. |
 | `-fileRequiredForCompletion, -frfc, -file` | The dialog will close automatically once the specified file appears on disk. |
