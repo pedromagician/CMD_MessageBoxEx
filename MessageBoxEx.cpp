@@ -455,8 +455,10 @@ bool MessageBoxEx::MessageBox(int& _result)
 		width, height,
 		parent, nullptr, nullptr, nullptr
 	);
-	if (mhWndMessageBoxEx == nullptr)
+	if (mhWndMessageBoxEx == nullptr) {
+		wcout << _T("Error - CreateWindowEx failed") << endl;
 		return false;
+	}
 
 	HMENU pSysMenu = GetSystemMenu(mhWndMessageBoxEx, FALSE);
 	if (pSysMenu) {
