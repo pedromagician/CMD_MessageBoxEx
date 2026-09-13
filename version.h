@@ -4,8 +4,8 @@
 #define STRINGIZE(s) STRINGIZE2(s)
 
 #define VERSION_MAJOR               1
-#define VERSION_MINOR               9
-#define VERSION_PATCH               5
+#define VERSION_MINOR               10
+#define VERSION_PATCH               0
 #define VERSION_REVISION            __BUILD_REVISION__
 
 #define VER_COMPANYNAME_STR         "Pedro"
