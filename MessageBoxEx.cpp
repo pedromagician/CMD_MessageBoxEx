@@ -80,8 +80,10 @@ LRESULT CALLBACK MessageBoxEx::WndProc(HWND _hWnd, UINT _message, WPARAM _wParam
 				SetBkColor(hdcStatic, RGB(r, g, b));
 			}
 
-			return (INT_PTR)mhbrBkgnd;
-			break;
+			if (mhbrBkgnd)
+				return (INT_PTR)mhbrBkgnd;
+
+			return DefWindowProc(_hWnd, _message, _wParam, _lParam);
 		}
 		case WM_CREATE: {
 			memset(&lfont, 0, sizeof(lfont));
